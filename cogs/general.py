@@ -17,6 +17,21 @@ from discord.ext.commands import Context
 
 
 class General(commands.Cog, name="general"):
+    SIGN = ("c", "e", "b", "o")
+    round = 0
+    cards_player1 = []
+    cards_player2 = []
+    played_card_p1 = []
+    played_card_p2 = []
+    score_p1 = 0
+    score_p2 = 0
+    current_player = 1
+    limit_score = 10
+    deck = []
+    show_card = (0, "")
+    special_cards = []
+    order_number = []
+
     def __init__(self, bot) -> None:
         self.bot = bot
         self.context_menu_user = app_commands.ContextMenu(
@@ -265,7 +280,7 @@ class General(commands.Cog, name="general"):
             ) as request:
                 if request.status == 200:
                     data = await request.json(
-                        content_type="application/javascript"
+                        content_type="application/json"
                     )  # For some reason the returned content is of type JavaScript
                     embed = discord.Embed(
                         title="Bitcoin price",
@@ -279,6 +294,322 @@ class General(commands.Cog, name="general"):
                         color=0xE02B2B,
                     )
                 await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="nueva",
+        description="Nueva partida.",
+    )
+    async def new(self, context: Context) -> None:
+        """
+        Get the current price of bitcoin.
+
+        :param context: The hybrid command context.
+        """
+        self.deck = [
+            (1, "c"),
+            (2, "c"),
+            (3, "c"),
+            (4, "c"),
+            (5, "c"),
+            (6, "c"),
+            (7, "c"),
+            (10, "c"),
+            (11, "c"),
+            (12, "c"),
+            (1, "e"),
+            (2, "e"),
+            (3, "e"),
+            (4, "e"),
+            (5, "e"),
+            (6, "e"),
+            (7, "e"),
+            (10, "e"),
+            (11, "e"),
+            (12, "e"),
+            (1, "b"),
+            (2, "b"),
+            (3, "b"),
+            (4, "b"),
+            (5, "b"),
+            (6, "b"),
+            (7, "b"),
+            (10, "b"),
+            (11, "b"),
+            (12, "b"),
+            (1, "o"),
+            (2, "o"),
+            (3, "o"),
+            (4, "o"),
+            (5, "o"),
+            (6, "o"),
+            (7, "o"),
+            (10, "o"),
+            (11, "o"),
+            (12, "o"),
+        ]
+        self.match = []
+        self.played_card_p1 = []
+        self.played_card_p2 = []
+        self.score_p1 = 0
+        self.score_p2 = 0
+        card1 = random.choice(self.deck)
+        self.deck.remove(card1)
+        card2 = random.choice(self.deck)
+        self.deck.remove(card2)
+        card3 = random.choice(self.deck)
+        self.deck.remove(card3)
+        self.cards_player1 = [card1, card2, card3]
+        card1 = random.choice(self.deck)
+        self.deck.remove(card1)
+        card2 = random.choice(self.deck)
+        self.deck.remove(card2)
+        card3 = random.choice(self.deck)
+        self.deck.remove(card3)
+        self.cards_player2 = [card1, card2, card3]
+        self.show_card = random.choice(self.deck)
+        self.deck.remove(self.show_card)
+        self.special_cards = [
+            (2, self.show_card[1]),
+            (4, self.show_card[1]),
+            (5, self.show_card[1]),
+            (10, self.show_card[1]),
+            (11, self.show_card[1]),
+            (1, "e"),
+            (1, "b"),
+            (7, "e"),
+            (7, "o"),
+        ]
+        self.order_number = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+        # caso especial del 12 de la muestra
+        if self.show_card[0] in [2, 4, 5, 10, 11]:
+            i = {
+                2: 0,
+                4: 1,
+                5: 2,
+                10: 3,
+                11: 4,
+            }.get(self.show_card[0], 0)
+            self.special_cards[i] = (12, self.show_card[1])
+            print("Caso especial de pieza en muestra, Piezas y bravos:")
+            print(self.special_cards)
+        self.round = 1
+
+        embed = discord.Embed(
+            title="Repartiendo",
+            description=f" Jugador 1 tiene {self.cards_player1} y Jugador 2 tiene {self.cards_player2}, la carta muestra es {self.show_card}",
+            color=0xB9B91E,
+        )
+
+        await context.send(embed=embed)
+
+    @commands.hybrid_command(
+        name="j",
+        description="Nueva mano.",
+    )
+    async def play(self, context: Context, *, data: str) -> None:
+        """ """
+        data = data.split(" ")
+        card_number: int = int(data[0])
+        card_sign: str = data[1]
+
+        if card_number not in range(1, 12):
+            embed = discord.Embed(
+                title="ERROR",
+                description=f" No es un numero valido {card_number}",
+                color=0xDD0000,
+            )
+
+            await context.send(embed=embed)
+            return
+        elif card_sign not in self.SIGN:
+            embed = discord.Embed(
+                title="ERROR",
+                description=f" No es un signo valido {card_sign}",
+                color=0xDD0000,
+            )
+
+            await context.send(embed=embed)
+            return
+        if self.current_player == 1:
+            cards_player = self.cards_player1
+        else:
+            cards_player = self.cards_player2
+
+        if (card_number, card_sign) not in cards_player:
+            embed = discord.Embed(
+                title="ERROR",
+                description=f" No tienes esa carta {card_number} {card_sign}",
+                color=0xDD0000,
+            )
+
+            await context.send(embed=embed)
+            return
+
+        played_card = (card_number, card_sign)
+        if self.current_player == 1:
+            self.played_card_p1 = played_card
+            print(self.cards_player1, played_card)
+            self.cards_player1.remove(played_card)
+        else:
+            self.played_card_p2 = played_card
+            print(self.cards_player2, played_card)
+            self.cards_player2.remove(played_card)
+
+        embed = discord.Embed(
+            title="Repartiendo",
+            description=f" Jugador {self.current_player} ha jugado {played_card}, la carta muestra es {self.show_card}",
+            color=0xB9B91E,
+        )
+
+        await context.send(embed=embed)
+
+        if self.current_player == 1:
+            self.current_player = 2
+        else:
+            # Verificar quien gano la mano
+            gano = "Parda"
+            o_p1 = self.played_card_p1[0]
+            o_p2 = self.played_card_p2[0]
+            if o_p1 > o_p2:
+                gano = f" Jugador 1 ha ganado con {self.played_card_p1} sobre {self.played_card_p2}"
+                self.score_p1 += 1
+            elif o_p1 < o_p2:
+                gano = f" Jugador 2 ha ganando con {self.played_card_p2} sobre {self.played_card_p1}"
+                self.score_p2 += 1
+            else:
+                gano = "Parda"
+
+            embed = discord.Embed(
+                title="Resultado de la mano",
+                description=gano,
+                color=0xBEBEFE,
+            )
+
+            await context.send(embed=embed)
+
+            embed = discord.Embed(
+                title="Puntos",
+                description=f"Jugador 1 tiene {self.score_p1} y Jugador 2 tiene {self.score_p2}",
+                color=0xFFFF90,
+            )
+
+            await context.send(embed=embed)
+
+            embed = discord.Embed(
+                title="Cartas",
+                description=f"Jugador 1 tiene {self.cards_player1} y Jugador 2 tiene {self.cards_player2}",
+                # brown
+                color=0x964800,
+            )
+
+            await context.send(embed=embed)
+
+            self.current_player = 1
+            if self.round == 3:
+                self.round = 0
+                self.cards_player1 = []
+                self.cards_player2 = []
+                self.played_card_p1 = []
+                self.played_card_p2 = []
+                self.deck = [
+                    (1, "c"),
+                    (2, "c"),
+                    (3, "c"),
+                    (4, "c"),
+                    (5, "c"),
+                    (6, "c"),
+                    (7, "c"),
+                    (8, "c"),
+                    (9, "c"),
+                    (10, "c"),
+                    (11, "c"),
+                    (12, "c"),
+                    (1, "e"),
+                    (2, "e"),
+                    (3, "e"),
+                    (4, "e"),
+                    (5, "e"),
+                    (6, "e"),
+                    (7, "e"),
+                    (8, "e"),
+                    (9, "e"),
+                    (10, "e"),
+                    (11, "e"),
+                    (12, "e"),
+                    (1, "b"),
+                    (2, "b"),
+                    (3, "b"),
+                    (4, "b"),
+                    (5, "b"),
+                    (6, "b"),
+                    (7, "b"),
+                    (8, "b"),
+                    (9, "b"),
+                    (10, "b"),
+                    (11, "b"),
+                    (12, "b"),
+                    (1, "o"),
+                    (2, "o"),
+                    (3, "o"),
+                    (4, "o"),
+                    (5, "o"),
+                    (6, "o"),
+                    (7, "o"),
+                    (8, "o"),
+                    (9, "o"),
+                    (10, "o"),
+                    (11, "o"),
+                    (12, "o"),
+                ]
+                card1 = random.choice(self.deck)
+                self.deck.remove(card1)
+                card2 = random.choice(self.deck)
+                self.deck.remove(card2)
+                card3 = random.choice(self.deck)
+                self.deck.remove(card3)
+                self.cards_player1 = [card1, card2, card3]
+                card1 = random.choice(self.deck)
+                self.deck.remove(card1)
+                card2 = random.choice(self.deck)
+                self.deck.remove(card2)
+                card3 = random.choice(self.deck)
+                self.deck.remove(card3)
+                self.cards_player2 = [card1, card2, card3]
+                self.show_card = random.choice(self.deck)
+                self.deck.remove(self.show_card)
+                self.special_cards = [
+                    (2, self.show_card[1]),
+                    (4, self.show_card[1]),
+                    (5, self.show_card[1]),
+                    (10, self.show_card[1]),
+                    (11, self.show_card[1]),
+                    (1, "e"),
+                    (1, "b"),
+                    (7, "e"),
+                    (7, "o"),
+                ]
+                # caso especial del 12 de la muestra
+                if self.show_card[0] in [2, 4, 5, 10, 11]:
+                    i = {
+                        2: 0,
+                        4: 1,
+                        5: 2,
+                        10: 3,
+                        11: 4,
+                    }.get(self.show_card[0], 0)
+                    self.special_cards[i] = (12, self.show_card[1])
+                    print("Caso especial de pieza en muestra, Piezas y bravos:")
+                    print(self.special_cards)
+                embed = discord.Embed(
+                    title="Repartiendo",
+                    description=f" Jugador 1 tiene {self.cards_player1} y Jugador 2 tiene {self.cards_player2}, la carta muestra es {self.show_card}",
+                    color=0xB9B91E,
+                )
+
+                await context.send(embed=embed)
+
+            else:
+                self.round += 1
 
 
 async def setup(bot) -> None:
