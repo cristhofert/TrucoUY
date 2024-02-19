@@ -17,7 +17,7 @@ from discord.ext.commands import Context
 
 
 class General(commands.Cog, name="general"):
-    SIGN = ("c", "e", "b", "o")
+    SIGN = (":wine_glass:", ":dagger:", ":herb:", ":coin:")
     round = 0
     cards_player1 = []
     cards_player2 = []
@@ -295,6 +295,9 @@ class General(commands.Cog, name="general"):
                     )
                 await context.send(embed=embed)
 
+    def card(self, card: tuple) -> str:
+        return f"{card[0]}{card[1]}   "
+
     @commands.hybrid_command(
         name="nueva",
         description="Nueva partida.",
@@ -306,46 +309,46 @@ class General(commands.Cog, name="general"):
         :param context: The hybrid command context.
         """
         self.deck = [
-            (1, "c"),
-            (2, "c"),
-            (3, "c"),
-            (4, "c"),
-            (5, "c"),
-            (6, "c"),
-            (7, "c"),
-            (10, "c"),
-            (11, "c"),
-            (12, "c"),
-            (1, "e"),
-            (2, "e"),
-            (3, "e"),
-            (4, "e"),
-            (5, "e"),
-            (6, "e"),
-            (7, "e"),
-            (10, "e"),
-            (11, "e"),
-            (12, "e"),
-            (1, "b"),
-            (2, "b"),
-            (3, "b"),
-            (4, "b"),
-            (5, "b"),
-            (6, "b"),
-            (7, "b"),
-            (10, "b"),
-            (11, "b"),
-            (12, "b"),
-            (1, "o"),
-            (2, "o"),
-            (3, "o"),
-            (4, "o"),
-            (5, "o"),
-            (6, "o"),
-            (7, "o"),
-            (10, "o"),
-            (11, "o"),
-            (12, "o"),
+            (1, self.SIGN[0]),
+            (2, self.SIGN[0]),
+            (3, self.SIGN[0]),
+            (4, self.SIGN[0]),
+            (5, self.SIGN[0]),
+            (6, self.SIGN[0]),
+            (7, self.SIGN[0]),
+            (10, self.SIGN[0]),
+            (11, self.SIGN[0]),
+            (12, self.SIGN[0]),
+            (1, self.SIGN[1]),
+            (2, self.SIGN[1]),
+            (3, self.SIGN[1]),
+            (4, self.SIGN[1]),
+            (5, self.SIGN[1]),
+            (6, self.SIGN[1]),
+            (7, self.SIGN[1]),
+            (10, self.SIGN[1]),
+            (11, self.SIGN[1]),
+            (12, self.SIGN[1]),
+            (1, self.SIGN[2]),
+            (2, self.SIGN[2]),
+            (3, self.SIGN[2]),
+            (4, self.SIGN[2]),
+            (5, self.SIGN[2]),
+            (6, self.SIGN[2]),
+            (7, self.SIGN[2]),
+            (10, self.SIGN[2]),
+            (11, self.SIGN[2]),
+            (12, self.SIGN[2]),
+            (1, self.SIGN[3]),
+            (2, self.SIGN[3]),
+            (3, self.SIGN[3]),
+            (4, self.SIGN[3]),
+            (5, self.SIGN[3]),
+            (6, self.SIGN[3]),
+            (7, self.SIGN[3]),
+            (10, self.SIGN[3]),
+            (11, self.SIGN[3]),
+            (12, self.SIGN[3]),
         ]
         self.match = []
         self.played_card_p1 = []
@@ -374,10 +377,10 @@ class General(commands.Cog, name="general"):
             (5, self.show_card[1]),
             (10, self.show_card[1]),
             (11, self.show_card[1]),
-            (1, "e"),
-            (1, "b"),
-            (7, "e"),
-            (7, "o"),
+            (1, self.SIGN[1]),
+            (1, self.SIGN[2]),
+            (7, self.SIGN[1]),
+            (7, self.SIGN[3]),
         ]
         self.order_number = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
         # caso especial del 12 de la muestra
@@ -395,8 +398,24 @@ class General(commands.Cog, name="general"):
         self.round = 1
 
         embed = discord.Embed(
-            title="Repartiendo",
-            description=f" Jugador 1 tiene {self.cards_player1} y Jugador 2 tiene {self.cards_player2}, la carta muestra es {self.show_card}",
+            title="Jugador 1",
+            description=f"{self.card(self.cards_player1[0])}{self.card(self.cards_player1[1])}{self.card(self.cards_player1[2])} ",
+            color=0xB9B91E,
+        )
+
+        await context.send(embed=embed)
+
+        embed = discord.Embed(
+            title="Jugador 2",
+            description=f"{self.card(self.cards_player2[0])}{self.card(self.cards_player2[1])}{self.card(self.cards_player2[2])} ",
+            color=0xB9B91E,
+        )
+
+        await context.send(embed=embed)
+
+        embed = discord.Embed(
+            title="Muestra",
+            description=f"{self.card(self.show_card)} ",
             color=0xB9B91E,
         )
 
@@ -412,6 +431,16 @@ class General(commands.Cog, name="general"):
         card_number: int = int(data[0])
         card_sign: str = data[1]
 
+        SIGN = (":wine_glass:", ":dagger:", ":herb:", ":coin:")
+
+        alt_sign = [
+            "🍷",
+            "🗡️",
+            "🌿",
+            "🪙",
+        ]
+        if card_sign in alt_sign:
+            card_sign = self.SIGN[alt_sign.index(card_sign)]
         if card_number not in range(1, 12):
             embed = discord.Embed(
                 title="ERROR",
@@ -422,6 +451,7 @@ class General(commands.Cog, name="general"):
             await context.send(embed=embed)
             return
         elif card_sign not in self.SIGN:
+            print(card_sign, self.SIGN)
             embed = discord.Embed(
                 title="ERROR",
                 description=f" No es un signo valido {card_sign}",
@@ -456,8 +486,8 @@ class General(commands.Cog, name="general"):
             self.cards_player2.remove(played_card)
 
         embed = discord.Embed(
-            title="Repartiendo",
-            description=f" Jugador {self.current_player} ha jugado {played_card}, la carta muestra es {self.show_card}",
+            title=f"Jugador {self.current_player} ha jugado {self.card(played_card)}",
+            description=f"la carta muestra es {self.card(self.show_card)}",
             color=0xB9B91E,
         )
 
@@ -467,39 +497,53 @@ class General(commands.Cog, name="general"):
             self.current_player = 2
         else:
             # Verificar quien gano la mano
-            gano = "Parda"
             o_p1 = self.played_card_p1[0]
             o_p2 = self.played_card_p2[0]
             if o_p1 > o_p2:
-                gano = f" Jugador 1 ha ganado con {self.played_card_p1} sobre {self.played_card_p2}"
                 self.score_p1 += 1
             elif o_p1 < o_p2:
-                gano = f" Jugador 2 ha ganando con {self.played_card_p2} sobre {self.played_card_p1}"
                 self.score_p2 += 1
             else:
-                gano = "Parda"
+                pass
 
+            stick_score_p1 = self.score_p1
+            stick_score_p2 = self.score_p2
             embed = discord.Embed(
-                title="Resultado de la mano",
-                description=gano,
-                color=0xBEBEFE,
-            )
-
-            await context.send(embed=embed)
-
-            embed = discord.Embed(
-                title="Puntos",
-                description=f"Jugador 1 tiene {self.score_p1} y Jugador 2 tiene {self.score_p2}",
+                title="Jugador 1 | Jugador 2",
+                description=f"""
+{stick_score_p1} | {stick_score_p2}""",
                 color=0xFFFF90,
             )
 
             await context.send(embed=embed)
 
+            description = ""
+            for i in self.cards_player1:
+                description += f"{self.card(i)} "
+
             embed = discord.Embed(
-                title="Cartas",
-                description=f"Jugador 1 tiene {self.cards_player1} y Jugador 2 tiene {self.cards_player2}",
-                # brown
-                color=0x964800,
+                title="Jugador 1",
+                description=description,
+                color=0xB9B91E,
+            )
+
+            await context.send(embed=embed)
+
+            description = ""
+            for i in self.cards_player2:
+                description += f"{self.card(i)} "
+            embed = discord.Embed(
+                title="Jugador 2",
+                description=description,
+                color=0xB9B91E,
+            )
+
+            await context.send(embed=embed)
+
+            embed = discord.Embed(
+                title="Muestra",
+                description=f"{self.card(self.show_card)} ",
+                color=0xB9B91E,
             )
 
             await context.send(embed=embed)
@@ -512,54 +556,54 @@ class General(commands.Cog, name="general"):
                 self.played_card_p1 = []
                 self.played_card_p2 = []
                 self.deck = [
-                    (1, "c"),
-                    (2, "c"),
-                    (3, "c"),
-                    (4, "c"),
-                    (5, "c"),
-                    (6, "c"),
-                    (7, "c"),
-                    (8, "c"),
-                    (9, "c"),
-                    (10, "c"),
-                    (11, "c"),
-                    (12, "c"),
-                    (1, "e"),
-                    (2, "e"),
-                    (3, "e"),
-                    (4, "e"),
-                    (5, "e"),
-                    (6, "e"),
-                    (7, "e"),
-                    (8, "e"),
-                    (9, "e"),
-                    (10, "e"),
-                    (11, "e"),
-                    (12, "e"),
-                    (1, "b"),
-                    (2, "b"),
-                    (3, "b"),
-                    (4, "b"),
-                    (5, "b"),
-                    (6, "b"),
-                    (7, "b"),
-                    (8, "b"),
-                    (9, "b"),
-                    (10, "b"),
-                    (11, "b"),
-                    (12, "b"),
-                    (1, "o"),
-                    (2, "o"),
-                    (3, "o"),
-                    (4, "o"),
-                    (5, "o"),
-                    (6, "o"),
-                    (7, "o"),
-                    (8, "o"),
-                    (9, "o"),
-                    (10, "o"),
-                    (11, "o"),
-                    (12, "o"),
+                    (1, self.SIGN[0]),
+                    (2, self.SIGN[0]),
+                    (3, self.SIGN[0]),
+                    (4, self.SIGN[0]),
+                    (5, self.SIGN[0]),
+                    (6, self.SIGN[0]),
+                    (7, self.SIGN[0]),
+                    (8, self.SIGN[0]),
+                    (9, self.SIGN[0]),
+                    (10, self.SIGN[0]),
+                    (11, self.SIGN[0]),
+                    (12, self.SIGN[0]),
+                    (1, self.SIGN[1]),
+                    (2, self.SIGN[1]),
+                    (3, self.SIGN[1]),
+                    (4, self.SIGN[1]),
+                    (5, self.SIGN[1]),
+                    (6, self.SIGN[1]),
+                    (7, self.SIGN[1]),
+                    (8, self.SIGN[1]),
+                    (9, self.SIGN[1]),
+                    (10, self.SIGN[1]),
+                    (11, self.SIGN[1]),
+                    (12, self.SIGN[1]),
+                    (1, self.SIGN[2]),
+                    (2, self.SIGN[2]),
+                    (3, self.SIGN[2]),
+                    (4, self.SIGN[2]),
+                    (5, self.SIGN[2]),
+                    (6, self.SIGN[2]),
+                    (7, self.SIGN[2]),
+                    (8, self.SIGN[2]),
+                    (9, self.SIGN[2]),
+                    (10, self.SIGN[2]),
+                    (11, self.SIGN[2]),
+                    (12, self.SIGN[2]),
+                    (1, self.SIGN[3]),
+                    (2, self.SIGN[3]),
+                    (3, self.SIGN[3]),
+                    (4, self.SIGN[3]),
+                    (5, self.SIGN[3]),
+                    (6, self.SIGN[3]),
+                    (7, self.SIGN[3]),
+                    (8, self.SIGN[3]),
+                    (9, self.SIGN[3]),
+                    (10, self.SIGN[3]),
+                    (11, self.SIGN[3]),
+                    (12, self.SIGN[3]),
                 ]
                 card1 = random.choice(self.deck)
                 self.deck.remove(card1)
@@ -583,10 +627,10 @@ class General(commands.Cog, name="general"):
                     (5, self.show_card[1]),
                     (10, self.show_card[1]),
                     (11, self.show_card[1]),
-                    (1, "e"),
-                    (1, "b"),
-                    (7, "e"),
-                    (7, "o"),
+                    (1, self.SIGN[1]),
+                    (1, self.SIGN[2]),
+                    (7, self.SIGN[1]),
+                    (7, self.SIGN[3]),
                 ]
                 # caso especial del 12 de la muestra
                 if self.show_card[0] in [2, 4, 5, 10, 11]:
@@ -600,9 +644,33 @@ class General(commands.Cog, name="general"):
                     self.special_cards[i] = (12, self.show_card[1])
                     print("Caso especial de pieza en muestra, Piezas y bravos:")
                     print(self.special_cards)
+
+                description = ""
+                for i in self.cards_player1:
+                    description += f"{self.card(i)} "
+
                 embed = discord.Embed(
-                    title="Repartiendo",
-                    description=f" Jugador 1 tiene {self.cards_player1} y Jugador 2 tiene {self.cards_player2}, la carta muestra es {self.show_card}",
+                    title="Jugador 1",
+                    description=description,
+                    color=0xB9B91E,
+                )
+
+                await context.send(embed=embed)
+
+                description = ""
+                for i in self.cards_player2:
+                    description += f"{self.card(i)} "
+                embed = discord.Embed(
+                    title="Jugador 2",
+                    description=description,
+                    color=0xB9B91E,
+                )
+
+                await context.send(embed=embed)
+
+                embed = discord.Embed(
+                    title="Muestra",
+                    description=f"{self.card(self.show_card)} ",
                     color=0xB9B91E,
                 )
 
