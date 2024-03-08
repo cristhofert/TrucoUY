@@ -130,19 +130,56 @@ class ShowCardsView(discord.ui.View):
         print(button.label)
 
 
+class BetForPoints(discord.ui.View):
+
+    def __init__(self, has_flower) -> None:
+        super().__init__()
+        self.value = None
+        for i, item in enumerate(self.children):
+            if isinstance(item, discord.ui.Button):
+                if item.custom_id == "points":
+                    item.disabled = not has_flower
+                elif item.custom_id == "flower":
+                    item.disabled = has_flower
+
+    @discord.ui.button(
+        label="Envido",
+        style=discord.ButtonStyle.blurple,
+        disabled=True,
+        custom_id="points",
+    )
+    async def points(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ) -> None:
+        self.value = "points"
+        self.stop()
+
+    @discord.ui.button(
+        label="Flor",
+        style=discord.ButtonStyle.blurple,
+        disabled=True,
+        custom_id="flower",
+    )
+    async def flower(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ) -> None:
+        self.value = "flower"
+        self.stop()
+
+
 class AcceptPoints(discord.ui.View):
     def __init__(self) -> None:
         super().__init__()
         self.value = None
 
-    @discord.ui.button(label="Accept", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Quiero", style=discord.ButtonStyle.blurple)
     async def confirm(
         self, button: discord.ui.Button, interaction: discord.Interaction
     ) -> None:
         self.value = "accept"
         self.stop()
 
-    @discord.ui.button(label="Decline", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="No Quiero", style=discord.ButtonStyle.blurple)
     async def cancel(
         self, button: discord.ui.Button, interaction: discord.Interaction
     ) -> None:
@@ -161,6 +198,26 @@ class AcceptPoints(discord.ui.View):
         self, button: discord.ui.Button, interaction: discord.Interaction
     ) -> None:
         self.value = "al"
+        self.stop()
+
+
+class AcceptRePoints(discord.ui.View):
+    def __init__(self) -> None:
+        super().__init__()
+        self.value = None
+
+    @discord.ui.button(label="Quiero", style=discord.ButtonStyle.blurple)
+    async def confirm(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ) -> None:
+        self.value = "accept"
+        self.stop()
+
+    @discord.ui.button(label="No Quiero", style=discord.ButtonStyle.blurple)
+    async def cancel(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ) -> None:
+        self.value = "decline"
         self.stop()
 
 
@@ -306,6 +363,63 @@ class Truco(commands.Cog, name="truco"):
         await self.game.user1.send(message, view=view, embed=embed)
         await self.game.user2.send(message, view=view, embed=embed)
 
+    async def points(self, propone, acepta):
+        flower = False
+        if self.game.current_player == 1:
+            flower = self.game.has_flower_p1()
+        else:
+            flower = self.game.has_flower_p2()
+        print(f"Flor: {flower}")
+        bet_for_points = BetForPoints(flower)
+        await propone.send(view=bet_for_points)
+        await bet_for_points.wait()
+        if bet_for_points.value == "points":
+            # envido
+            hand1_re_points = AcceptPoints()
+            await acepta.send(view=hand1_re_points)
+            await hand1_re_points.wait()
+            if hand1_re_points.value == "confirm":
+                p = self.game.count_points()
+                if p == 1:
+                    await self.both_send("Ganó el jugador 1")
+                else:
+                    await self.both_send("Ganó el jugador 2")
+            elif hand1_re_points.value == "re":
+                hand1_re_points = AcceptRePoints()
+                await propone.send(view=hand1_re_points)
+                await hand1_re_points.wait()
+                if hand1_re_points.value == "accept":
+                    p = self.game.count_points_re()
+                    if p == 1:
+                        await self.both_send("Ganó el jugador 1")
+                    else:
+                        await self.both_send("Ganó el jugador 2")
+                else:
+                    await self.both_send("Ganó el jugador 1")
+            elif hand1_re_points.value == "al":
+                hand1_al_points = AcceptAl()
+                await propone.send(view=hand1_al_points)
+                await hand1_al_points.wait()
+                if hand1_al_points.value == "accept":
+                    p = self.game.count_points_al()
+                    if p == 1:
+                        await self.both_send("Ganó el jugador 1")
+                    else:
+                        await self.both_send("Ganó el jugador 2")
+                else:
+                    await self.both_send("Ganó el jugador 1")
+            else:
+                await self.both_send("Ganó el jugador 1")
+        elif bet_for_points.value == "flower":
+            # contra flor
+            p = self.game.flower_points()
+            if p == 1:
+                await self.both_send("Ganó el jugador 1")
+            else:
+                await self.both_send("Ganó el jugador 2")
+        else:
+            await self.both_send("Ganó el jugador 1")
+
     @commands.hybrid_command(name="jugar", description="Empieza a jugar.")
     async def play(self, context: Context) -> None:
         """
@@ -343,22 +457,28 @@ class Truco(commands.Cog, name="truco"):
                 if self.game.user1 is None or self.game.user2 is None:
                     await self.both_send("No hay jugadores")
                     return
+
                 # primera mano
+                self.game.current_player = 1
                 hand1_player1 = ShowCardsView(self.game.cards_player1)
                 await self.game.user1.send(view=hand1_player1)
+                await self.points(self.game.user1, self.game.user2)
                 await hand1_player1.wait()
                 self.game.play(1, hand1_player1.value)
                 await self.both_send(
                     f"{self.game.user1.name} jugó", view=Card(hand1_player1.value)
                 )
+                self.game.current_player = 2
                 hand1_player2 = ShowCardsView(self.game.cards_player2)
                 await self.game.user2.send(view=hand1_player2)
                 await hand1_player2.wait()
+                # await self.points(self.game.user2, self.game.user1)
                 self.game.play(2, hand1_player2.value)
                 await self.both_send(
                     f"{self.game.user2.name} jugó", view=Card(hand1_player2.value)
                 )
                 # segunda mano
+                self.game.current_player = 1
                 hand2_player1 = ShowCardsView(self.game.cards_player1)
                 await self.game.user1.send(view=hand2_player1)
                 await hand2_player1.wait()
@@ -366,6 +486,7 @@ class Truco(commands.Cog, name="truco"):
                 await self.both_send(
                     f"{self.game.user1.name} jugó {self.card(hand2_player1.value)}"
                 )
+                self.game.current_player = 2
                 hand2_player2 = ShowCardsView(self.game.cards_player2)
                 await self.game.user2.send(view=hand2_player2)
                 await hand2_player2.wait()
@@ -374,6 +495,7 @@ class Truco(commands.Cog, name="truco"):
                     f"{self.game.user2.name} jugó {self.card(hand2_player2.value)}"
                 )
                 # tercer mano
+                self.game.current_player = 1
                 hand3_player1 = ShowCardsView(self.game.cards_player1)
                 await self.game.user1.send(view=hand3_player1)
                 await hand3_player1.wait()
@@ -381,6 +503,7 @@ class Truco(commands.Cog, name="truco"):
                 await self.both_send(
                     f"{self.game.user1.name} jugó {self.card(hand3_player1.value)}"
                 )
+                self.game.current_player = 2
                 hand3_player2 = ShowCardsView(self.game.cards_player2)
                 await self.game.user2.send(view=hand3_player2)
                 await hand3_player2.wait()
@@ -444,56 +567,9 @@ class Truco(commands.Cog, name="truco"):
             await self.both_send("No aceptaste")
             self.game.surrender = True
 
-    @commands.hybrid_command(name="envido", description="Comando para jugar al envido.")
-    async def points(self, context: Context) -> None:
-        view = AcceptPoints()
-        await self.both_send("Envido", view=view)
-        await view.wait()
-        if view.value == "accept":
-            await self.both_send("Aceptaste")
-            # se cuenta los puntos de las cartas
-            # quien gane se lleva lso puntos
-            if self.game.count_points() == 1:
-                # el usuario que echo gana un punto
-                await self.both_send("Ganó el jugador 1")
-            else:
-                # el usuario que echo gana un punto
-                await self.both_send("Ganó el jugador 2")
-        elif view.value == "re":
-            re_view = AcceptRe()
-            await self.both_send("Re envido", view=re_view)
-            await re_view.wait()
-            if re_view.value == "accept":
-                await self.both_send("Aceptaste")
-                # se cuenta los puntos de las cartas
-                # quien gane se lleva lso puntos
-                if self.game.count_points_re() == 1:
-                    # el usuario que echo gana un punto
-                    await self.both_send("Ganó el jugador 1")
-                else:
-                    # el usuario que echo gana un punto
-                    await self.both_send("Ganó el jugador 2")
-        elif view.value == "al":
-            al_view = AcceptAl()
-            await self.both_send("Al resto", view=al_view)
-            await al_view.wait()
-            if al_view.value == "accept":
-                await self.both_send("Aceptaste")
-                # se cuenta los puntos de las cartas
-                # quien gane se lleva lso puntos
-                if self.game.count_points_al() == 1:
-                    # el usuario que echo gana un punto
-                    await self.both_send("Ganó el jugador 1")
-                else:
-                    # el usuario que echo gana un punto
-                    await self.both_send("Ganó el jugador 2")
-        else:
-            # el usuario que echo gana un punto
-            await self.both_send("No aceptaste")
-
 
 class Game(metaclass=SingletonMeta):
-    SIGN = ("🍷", "🗡", "🌿", "🪙")
+    SIGN = ("🍷", "🗡", "🌵", "🪙")
     cards_player1 = []
     cards_player2 = []
     played_card_p1 = []
@@ -529,11 +605,12 @@ class Game(metaclass=SingletonMeta):
 
     def dealing(self):
         # ship cards
-        self.deck = self.original_deck.copy()
-        for card in self.deck:
-            r = random.choice(self.deck)
-            self.deck.remove(r)
-            self.deck.append(card)
+        deck = self.original_deck.copy()
+        self.deck = []
+        while len(deck) > 0:
+            r = random.choice(deck)
+            deck.remove(r)
+            self.deck.append(r)
         # dealing cards
         self.played_card_p1 = []
         self.played_card_p2 = []
@@ -569,8 +646,20 @@ class Game(metaclass=SingletonMeta):
             print(self.special_cards)
         print(f"Cartas jugador 1: {self.cards_player1}")
         print(f"Cartas jugador 2: {self.cards_player2}")
-        self.cards_player1.sort(key=lambda x: self.order_number.index(x))
-        self.cards_player2.sort(key=lambda x: self.order_number.index(x))
+        self.cards_player1.sort(key=lambda x: self.order_number.index(x[0]))
+        self.cards_player2.sort(key=lambda x: self.order_number.index(x[0]))
+        self.cards_player1.sort(
+            key=lambda x: (
+                self.special_cards.index(x) if x in self.special_cards else float("inf")
+            )
+        )
+        self.cards_player2.sort(
+            key=lambda x: (
+                self.special_cards.index(x) if x in self.special_cards else float("inf")
+            )
+        )
+        print(f"Cartas jugador 1: {self.cards_player1}")
+        print(f"Cartas jugador 2: {self.cards_player2}")
 
     def start(self):
         self.original_deck = [
@@ -676,6 +765,7 @@ class Game(metaclass=SingletonMeta):
                 return
 
     def count_points(self, bet=2):
+        # caso de cartas negras
         special_cards_points = {
             (2, self.show_card[1]): 30,
             (4, self.show_card[1]): 29,
@@ -683,22 +773,37 @@ class Game(metaclass=SingletonMeta):
             (10, self.show_card[1]): 27,
             (11, self.show_card[1]): 27,
         }
+        second_special_cards_points = {
+            (4, self.show_card[1]): 9,
+            (5, self.show_card[1]): 8,
+            (10, self.show_card[1]): 7,
+            (11, self.show_card[1]): 7,
+        }
         user1_points = 0
         user2_points = 0
         # contar envido
+        # first card
         if self.cards_player1[0] in special_cards_points:
             user1_points += special_cards_points[self.cards_player1[0]]
         else:
             user1_points += self.cards_player1[0][0]
-        user1_points += self.cards_player1[1][0]
-        user1_points += self.cards_player1[2][0]
+        # second card
+        if self.cards_player1[1] in special_cards_points:
+            user1_points += second_special_cards_points[self.cards_player1[1]]
+        else:
+            user1_points += self.cards_player1[1][0]
 
+        # first card
         if self.cards_player2[0] in special_cards_points:
             user2_points += special_cards_points[self.cards_player2[0]]
         else:
             user2_points += self.cards_player2[0][0]
-        user2_points += self.cards_player2[1][0]
-        user2_points += self.cards_player2[2][0]
+        # second card
+        if self.cards_player2[1] in special_cards_points:
+            user2_points += second_special_cards_points[self.cards_player2[1]]
+        else:
+            user2_points += self.cards_player2[1][0]
+
         if user1_points > user2_points:
             self.hand_score_1 += bet
             return 1
@@ -716,6 +821,83 @@ class Game(metaclass=SingletonMeta):
         # al resto
         rest = 10
         return self.count_points(rest)
+
+    def has_flower(self, cards_player: list):
+        if (
+            cards_player[0][1] == cards_player[1][1]
+            and cards_player[1][1] == cards_player[2][1]
+        ):
+            return True
+        if (
+            cards_player[0] in self.special_cards
+            and cards_player[1] in self.special_cards
+        ):
+            return True
+        if (
+            cards_player[0] in self.special_cards
+            and cards_player[1][1] == cards_player[2][1]
+        ):
+            return True
+        return False
+
+    def has_flower_p1(self):
+        return self.has_flower(self.cards_player1)
+
+    def has_flower_p2(self):
+        return self.has_flower(self.cards_player2)
+
+    def flower_points(self):
+        special_cards_points = {
+            (2, self.show_card[1]): 30,
+            (4, self.show_card[1]): 29,
+            (5, self.show_card[1]): 28,
+            (10, self.show_card[1]): 27,
+            (11, self.show_card[1]): 27,
+        }
+        second_special_cards_points = {
+            (4, self.show_card[1]): 9,
+            (5, self.show_card[1]): 8,
+            (10, self.show_card[1]): 7,
+            (11, self.show_card[1]): 7,
+        }
+        user1_points = 0
+        user2_points = 0
+        # contar envido
+        # first card
+        if self.cards_player1[0] in special_cards_points:
+            user1_points += special_cards_points[self.cards_player1[0]]
+        else:
+            user1_points += self.cards_player1[0][0]
+        # second card
+        if self.cards_player1[1] in special_cards_points:
+            user1_points += second_special_cards_points[self.cards_player1[1]]
+        else:
+            user1_points += self.cards_player1[1][0]
+        # third card
+        user1_points += self.cards_player1[2][0]
+
+        # first card
+        if self.cards_player2[0] in special_cards_points:
+            user2_points += special_cards_points[self.cards_player2[0]]
+        else:
+            user2_points += self.cards_player2[0][0]
+        # second card
+        if self.cards_player2[1] in special_cards_points:
+            user2_points += second_special_cards_points[self.cards_player2[1]]
+        else:
+            user2_points += self.cards_player2[1][0]
+        # third card
+        user2_points += self.cards_player2[2][0]
+
+        if user1_points > user2_points:
+            self.hand_score_1 += 3
+            return 1
+        elif user1_points < user2_points:
+            self.hand_score_2 += 3
+            return 2
+        else:
+            self.hand_score_1 += 3
+            return 1
 
 
 async def setup(bot) -> None:
